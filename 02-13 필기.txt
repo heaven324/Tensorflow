@@ -1,0 +1,160 @@
+﻿■ 딥러닝 마무리 목표	
+	1. 모델 저장과 모델 불러오는 방법	
+	2. 배치 정규화를 훈련때는 켜고 테스트때 끄는 방법	
+	3. vgg9 모댈을 가지고 개/고양이 사진을 분류:	
+		정확도 : 훈련 100%, 테스트 : 90%
+		" 포트폴리오를 빛내기 위한 Tip:	
+		  컴퓨터가 분류하기 어려운 사진들은 사람이 분류할 수 있도록 별도의 폴더로 사진을 
+		  옮기는 코드 구현 "
+
+
+
+
+■ 수아랩에서 이미지 데이터 전처리
+	1. 훈련하는 신경망에 입력할 이미지 중에 아웃라이어가 섞여있으면 아무리 학습해도 정확도가 더 
+	   개선이 안된다. 아웃라이어 데이터를 제거하는 작업
+	   사람이 작업한다. 아르바이트 생, 하루에 5만장 정도 직접 본다.
+		↓
+	아웃라이어 데이터를 제거하는 자동화 코드 구현 (최근에)	
+	↓	[ 0.51, 0.49 ]	<-- 애매한 사진	사람사진(라벨 -> 0) ---> [ 0.2, 0.8 ]
+			개	    ↑				테스트 데이터에서 못맞춘 사진들을
+				따로 분석한다.
+	별도의 폴더에 들어간 사진이 전혀 다른 사진이다.
+	즉 사람 사진이다 라면 아예 삭제해 버린다.
+
+	개 사진인데 확률이 0.2 이하로 나와서 신경망이 계속 못맞추면
+	그 사진과 비슷한 사진을 더 모아서 훈련 데이터에 입력한다.
+	( 회전, 명암조절등을 해서 비슷한 사진의 데이터를 늘린다 )
+
+	수업 --> 폐사진	문제. 이파리
+
+
+
+
+문제 99. 문제 98번 코드로 테스트 데이터 (100장) 을 다시 테스트 하는데 테스트 데이터 중에서 못맞춘 
+	 사진의 번호가 어떻게 되는지 출력하시오 !
+
+	힌트 :
+	
+	for t in test_acc_list:
+	    for j, i in zip(t,label):
+	        if np.argmax(j) != i:
+	            print('----------------------')
+
+
+	답 :
+	
+	  p = sess.run(y_predict, feed_dict={x: test_xs, y_onehot: test_ys, keep_prob: 1.0, training: False})
+	    l = sess.run(y_label, feed_dict={x: test_xs, y_onehot: test_ys, keep_prob: 1.0, training: False})
+	    w = []
+	    for x in range(len(p)):
+	        if p[x] != l[x] :
+	            w.append(x+1)
+	    print(w)
+	    print(len(w))
+
+
+
+
+문제 100. 틀린 사진만 d:\\wrong_image 라는 폴더에 옮겨지게 하시오 !
+
+	 힌트 :		os.rename 사용
+	
+	#모델 저장
+	saver = tf.train.Saver()
+	with tf.Session() as sess:  
+	    test_acc_list = []
+	    
+	    saver.restore(sess, 'D:\\catdog\\final_weight\\model')
+	    #test_txs, test_tys = loader3.next_batch(test_img, test_lb,0,3)
+	
+	    test_txs = testX
+	    test_label = testY    
+	    
+	    test_acc_list.append(sess.run(accuracy, feed_dict={x: test_txs, y_onehot: test_label, \
+								  keep_prob: 1.0, training:False}))
+    
+	    print("정확도:",test_acc_list)
+	    
+	    l = sess.run(y_label, feed_dict={x: test_txs, y_onehot: test_label, keep_prob: 1.0, training: False})
+	    p = sess.run(y_predict, feed_dict={x:test_txs, keep_prob:1.0, training:False}).round(4)     
+	    
+	    w = []    
+	    for x in range(len(p)):
+	        if p[x] != l[x] :
+	            w.append(x+1)
+	            
+	            
+	    #w = [ x+1 for x in range(len(p)) if p[x] != l[x] ]
+	    print("불일치 사진:",w) 
+	    print("불일치 갯수:",len(w))  
+    
+    
+    
+	import cv2
+	path = 'D:\\b\\JH_catdog2\\test2\\'
+	for i in w:
+	    image = cv2.imread('{}{}.jpeg'.format(path, i) )
+	    cv2.imwrite('D:\\b\\wrong_img\\{}.jpeg'.format(i), image)
+	print('complite')
+    
+
+
+
+
+
+문제 101. 옮긴 사진 다시 원본에 넣어주고 다시수행하는데 못맞춘 이미지 중에 확률이 0.2 이하인 것만 
+	  wrong_img 폴더에 옮겨지게 하시오 !
+
+
+	# 애매한 사진 필터링하기
+    p = sess.run(y_predict, feed_dict={x: test_xs, y_onehot: test_ys, keep_prob: 1.0, training: False})
+    l = sess.run(y_label, feed_dict={x: test_xs, y_onehot: test_ys, keep_prob: 1.0, training: False})
+    h = sess.run(y_hat, feed_dict={x: test_xs, y_onehot: test_ys, keep_prob: 1.0, training: False})
+    
+    for x in range(len(p)):
+        if p[x] != l[x] and np.min(h[x])<=0.2:
+            wrong_image_list.append(x+1)
+
+
+
+
+
+
+■ 정상 폐사진 vs 폐결절 사진 분류
+
+문제 102. 폐사진 이미지의 사이즈를 128 x 128 로 일괄 변경하시오 !
+
+	PlastiliqImageResizerInstall.exe 프로그램 사용
+
+
+문제 103. (점심시간 문제) 폐사진을 로드해서 numpy array 숫자 리스트로 변환하는 loader4.py 를 loader3.py 
+	  를 가지고 수정해서 만드시오 !
+
+	  1~ 6470 장을 train 폴더에 넣고
+	  6471 ~ 7470 장을 test 폴더에 넣고
+	  라벨을 lung_train_label.csv 와 lung_test_label.csv 
+	  를 생성해서 아래의 코드가 실행되게 하시오 !
+
+	test_image = 'D:\\d\\test2\\'
+	test_label = 'D:\\d\\lung_test_label.csv'
+	
+	train_image = 'D:\\d\\train2\\'
+	train_label = 'D:\\d\\lung_train_label.csv'
+	
+	
+	print("LOADING DATA")
+	# 폐사진 데이터 로드
+	
+	trainX = loader4.image_load(train_image)
+	trainY = loader4.label_load(train_label)
+	testX = loader4.image_load(test_image)
+	testY = loader4.label_load(test_label)
+	
+	normal 은 1 patient 는 0으로 고쳐서
+
+
+
+
+문제 104. 개고양이 vgg신경망에 폐사진을 입력해서 20에폭 수행하고 훈련 정확도와 테스트 정확도를 확인하시오 !
+
